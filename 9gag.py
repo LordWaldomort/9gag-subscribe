@@ -33,10 +33,12 @@ def get_new_notifications(session):
 		last_notification_parsed = comments[0][1]
 	return comments
 
-
-if __name__ == '__main__':
+def main():
 	session = requests.session()
 	print 'logging in'
 	login(session)
 	print 'logged in'
 	print get_new_notifications(session)
+
+if __name__ == '__main__':
+	main()
