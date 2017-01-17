@@ -13,7 +13,7 @@ COMMAND_SUBSCRIBE = 'subscribe'
 BASE_URL = 'https://9gag.com'
 LOGIN = '/login'
 NOTIFICATION = '/notifications/load-more?refKey='
-COMMENT_URL = 'http://comment.9gag.com/v1/comment-list.json'
+COMMENT_LIST_URL = 'http://comment.9gag.com/v1/comment-list.json'
 
 COMMENT_MENTION_REGEX = re.compile('<li [^>]* data-actionType="COMMENT_MENTION" [^>]*>')
 COMMENT_ID_REGEX = re.compile('.*data-objectId="http://9gag.com/gag/([^#]*)#([^"]*)".*')
@@ -64,7 +64,7 @@ def get_subscription_from_comment(session, post_id, comment_id):
 		'level': 1,
 		'commentId': comment_id,
 	}
-	r = session.post(COMMENT_URL, data=data)
+	r = session.post(COMMENT_LIST_URL, data=data)
 	try:
 		result = r.json()
 	except ValueError as e:
