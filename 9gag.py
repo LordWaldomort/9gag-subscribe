@@ -1,9 +1,12 @@
 import ConfigParser
 import requests
+import sqlite3
 import sys
+import time
 import re
 
 CONFIG_FILE = 'config.cfg'
+SQLITE_DB_FILE = 'subscription_data.db'
 TAGGER_BOT_DISPLAY_NAME = '@post_tagger'
 COMMAND_SUBSCRIBE = 'subscribe'
 
@@ -66,8 +69,8 @@ def get_subscription_from_comment(session, post_id, comment_id):
 	if result['status'] != 'OK':
 		return None
 
-	op = result['payload']['opUserId']
-	if len(op) == 0:
+	op_id = result['payload']['opUserId']
+	if len(op_id) == 0:
 		# TODO handle no OP case
 		return None
 	comments = result['payload']['comments']
@@ -78,21 +81,73 @@ def get_subscription_from_comment(session, post_id, comment_id):
 	if comment_text != (TAGGER_BOT_DISPLAY_NAME + ' ' + COMMAND_SUBSCRIBE):
 		return None
 
-	subscriber_display_name = comments[0]['user']['displayName']
-	subscriber_user_id = comments[0]['user']['userId']
+	subscriber_name = comments[0]['user']['displayName']
+	subscriber_id = comments[0]['user']['userId']
 
-	return (op, subscriber_display_name, subscriber_user_id)
+	return (op_id, subscriber_name, subscriber_id)
+
+def add_subscription(sql_conn, op_id, subs_id):
+	existing = sql_conn.execute("""
+			SELECT COUNT(*)
+			FROM subscriptions
+			WHERE op_id = '{}'
+				AND subscriber_id = '{}'
+		""".format(op_id, subs_id)).fetchall()[0][0]
+	if existing > 0:
+		print 'existing', op_id, subs_id
+		return
+
+	sql_conn.execute("""
+			INSERT INTO subscriptions (op_id, subscriber_id)
+			VALUES ('{}', '{}')
+		""".format(op_id, subs_id))
+
+	sql_conn.commit()
+
+def update_mapping(sql_conn, user_id, user_name):
+	existing = sql_conn.execute("""
+			SELECT COUNT(*)
+			FROM user_id_to_name
+			WHERE user_id = '{}'
+		""".format(user_id)).fetchall()[0][0]
+	if existing > 0:
+		sql_conn.execute("""
+				UPDATE user_id_to_name
+				SET name = '{}'
+				WHERE user_id = '{}'
+			""".format(user_name, user_id))
+	else:
+		sql_conn.execute("""
+				INSERT INTO user_id_to_name (user_id, name)
+				VALUES ('{}', '{}')
+			""".format(user_id, user_name))
+
+	sql_conn.commit()
+
+
+def update_subscriptions(session, sql_conn):
+	notifs = get_new_notifications(session)
+	for notif in notifs:
+		subscription = get_subscription_from_comment(session, notif[0], notif[1])
+		if subscription is None:
+			continue
+		op_id, subs_name, subs_id = subscription
+		add_subscription(sql_conn, op_id, subs_id)
+		update_mapping(sql_conn, subs_id, subs_name)
 
 def main():
+	sql_conn = sqlite3.connect(SQLITE_DB_FILE)
 	get_login_credentials()
 	session = requests.session()
 	print 'logging in'
 	login(session)
 	print 'logged in'
-	notifs = get_new_notifications(session)
-	print 'getting comments'
-	for notif in notifs:
-		print get_subscription_from_comment(session, notif[0], notif[1])
+
+	while True:
+		print 'Updating subscriptions'
+		update_subscriptions(session, sql_conn)
+		time.sleep(3)
+
 
 if __name__ == '__main__':
 	main()
