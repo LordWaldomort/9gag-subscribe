@@ -146,7 +146,7 @@ def main():
 	while True:
 		print 'Updating subscriptions'
 		update_subscriptions(session, sql_conn)
-		time.sleep(3)
+		time.sleep(60)
 
 
 if __name__ == '__main__':
