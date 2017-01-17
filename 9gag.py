@@ -65,7 +65,12 @@ def get_subscription_from_comment(session, post_id, comment_id):
 		'commentId': comment_id,
 	}
 	r = session.post(COMMENT_URL, data=data)
-	result = r.json()
+	try:
+		result = r.json()
+	except ValueError as e:
+		print e
+		return None
+
 	if result['status'] != 'OK':
 		return None
 
