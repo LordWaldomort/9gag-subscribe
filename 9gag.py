@@ -7,7 +7,7 @@ CONFIG_FILE = 'config.cfg'
 
 BASE_URL = 'https://9gag.com'
 LOGIN = '/login'
-NOTIFICATION = '/notifications/load_more?refKey='
+NOTIFICATION = '/notifications/load-more?refKey='
 
 COMMENT_MENTION_REGEX = re.compile('<li [^>]* data-actionType="COMMENT_MENTION" [^>]*>')
 COMMENT_ID_REGEX = re.compile('.*data-objectId="http://9gag.com/gag/([^#]*)#([^"]*)".*')
