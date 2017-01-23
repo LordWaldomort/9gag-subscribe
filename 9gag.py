@@ -10,10 +10,14 @@ SQLITE_DB_FILE = 'subscription_data.db'
 TAGGER_BOT_DISPLAY_NAME = '@post_tagger'
 COMMAND_SUBSCRIBE = 'subscribe'
 
+APP_ID = 'a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b'
+
 BASE_URL = 'https://9gag.com'
 LOGIN = '/login'
+CACHEABLE = '/cacheable'
 NOTIFICATION = '/notifications/load-more?refKey='
 COMMENT_LIST_URL = 'http://comment.9gag.com/v1/comment-list.json'
+COMMENT_POST_URL = 'http://comment.9gag.com/v1/comment.json'
 
 COMMENT_MENTION_REGEX = re.compile('<li [^>]* data-actionType="COMMENT_MENTION" [^>]*>')
 COMMENT_ID_REGEX = re.compile('.*data-objectId="http://9gag.com/gag/([^#]*)#([^"]*)".*')
@@ -21,6 +25,7 @@ NOTIFICATION_NEXT_KEY_REGEX = re.compile('<li class=".*badge-notification-nextKe
 
 login_data = {'username': '***', 'password': '***'}
 last_notification_parsed = ''
+cacheable = {}
 
 def get_login_credentials():
 	cfg = ConfigParser.ConfigParser()
@@ -30,6 +35,20 @@ def get_login_credentials():
 
 def login(session):
 	session.post(BASE_URL + LOGIN, data=login_data)
+	data = {"json":'[{"action":"vote","params":{}},{"action":"user","params":{}},{"action":"user-preference","params":{}},{"action":"user-quota","params":{}}]'}
+	headers = {
+		"X-Requested-With": "XMLHttpRequest",
+		"Accept": "application/json, text/javascipt, */*; q=0.01",
+	}
+	r = session.post(BASE_URL + CACHEABLE, data=data, headers=headers)
+
+	global cacheable
+	try:
+		cacheable = r.json()
+	except ValueError as e:
+		print 'Couldn\' get cacheable: ', r, e
+		exit()
+
 
 def get_new_notifications(session):
 	global last_notification_parsed
@@ -58,7 +77,7 @@ def get_new_notifications(session):
 
 def get_subscription_from_comment(session, post_id, comment_id):
 	data = {
-		'appId': 'a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b',
+		'appId': APP_ID,
 		'url': 'http://9gag.com/gag/' + post_id,
 		'count': 0,
 		'level': 1,
@@ -90,6 +109,26 @@ def get_subscription_from_comment(session, post_id, comment_id):
 	subscriber_id = comments[0]['user']['userId']
 
 	return (op_id, subscriber_name, subscriber_id)
+
+def post_comment(session, post_id, text):
+	data = {
+		'appId': APP_ID,
+		'url': 'http://9gag.com/gag/' + post_id,
+		'text': text,
+		'isAnonymous': 'off',
+		'auth': cacheable['user']['commentSso']
+	}
+	r = session.post(COMMENT_POST_URL, data=data)
+	try:
+		result = r.json()
+	except ValueError as e:
+		print r, e
+		return False
+
+	if result['status'] != 'OK':
+		print result
+		return False
+	return True
 
 def add_subscription(sql_conn, op_id, subs_id):
 	existing = sql_conn.execute("""
@@ -128,7 +167,6 @@ def update_mapping(sql_conn, user_id, user_name):
 			""".format(user_id, user_name))
 
 	sql_conn.commit()
-
 
 def update_subscriptions(session, sql_conn):
 	notifs = get_new_notifications(session)
