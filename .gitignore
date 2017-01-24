@@ -4,3 +4,11 @@ config.cfg
 
 #vim swap files
 *.swp
+
+
+#db files
+*.db
+
+
+#python bit codes
+*.pyc
