@@ -26,7 +26,7 @@ def get_new_posts():
 	return_ids = []
 	global posts_to_comment
 	hit_last = False
-	while hit_last == False:	
+	while hit_last == False:
 		response = requests.get(BASE_URL+load_url, headers={"X-Requested-With":"XMLHttpRequest", "Accept":"application/json, text/javascipt, */*; q=0.01"})
 		try:
 			ids = response.json()["ids"]
@@ -67,18 +67,11 @@ def comment_on_post(post_id, op_user_id):
 	global db_conn
 	global session
 	tag_ids = db_conn.execute("select name from subscriptions, user_id_to_name where op_id='"+op_user_id+"' and subscriptions.subscriber_id = user_id_to_name.user_id;").fetchall()
-	counter = 0
-	comment_text = ""
-	while counter < len(tag_ids):
-		comment_text += "@"+tag_ids[counter][0]+", "
-		counter += 1
-		if counter % 10 == 0:
-			ngag.post_comment(session, post_id, comment_text)
-			comment_text = ""
-	if comment_text!="":
+	chunk_size = 10
+
+	for i in xrange(0, len(tag_ids), chunk_size):
+		comment_text = ' '.join(map(lambda x: '@' + x, tag_ids[i:i+chunk_size])) + ' .'
 		ngag.post_comment(session, post_id, comment_text)
-		comment_text = ""
-	return None
 
 def process_post_queue():
 	for post_id in posts_to_comment.keys():
@@ -91,7 +84,7 @@ def process_post_queue():
 			if posts_to_comment[post_id] == 5:
 				del posts_to_comment[post_id]
 
-def init_9gag_py():	
+def init_9gag_py():
 	global session
 	ngag.get_login_credentials()
 	session = requests.session()
