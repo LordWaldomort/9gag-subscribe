@@ -6,7 +6,7 @@ import threading
 
 ngag = __import__("9gag")
 
-posts_processed=["aG0m1Y6"]
+posts_processed=[]
 
 BASE_URL = "http://9gag.com"
 COMMENT_URL = "http://comment-cdn.9gag.com/v1/cacheable/comment-list.json?appId=a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b&count=0&url=http%3A%2F%2F9gag.com%2Fgag%2F"
@@ -61,8 +61,6 @@ def get_op_id(post_id):
 		return ""
 	return response_json["payload"]["opUserId"]
 
-def post_comment(post_id, text):
-	return 0
 
 
 def comment_on_post(post_id, op_user_id):
@@ -72,7 +70,7 @@ def comment_on_post(post_id, op_user_id):
 	counter = 0
 	comment_text = ""
 	while counter < len(tag_ids):
-		comment_text += tag_ids[counter][0]+", "
+		comment_text += "@"+tag_ids[counter][0]+", "
 		counter += 1
 		if counter % 10 == 0:
 			ngag.post_comment(session, post_id, comment_text)
