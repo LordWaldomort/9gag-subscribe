@@ -24,7 +24,7 @@ COMMENT_ID_REGEX = re.compile('.*data-objectId="http://9gag.com/gag/([^#]*)#([^"
 NOTIFICATION_NEXT_KEY_REGEX = re.compile('<li class=".*badge-notification-nextKey[^"]*">([^<]*)</li>')
 
 login_data = {'username': '***', 'password': '***'}
-last_notification_parsed = ''
+notifications_processed = []
 cacheable = {}
 
 def get_login_credentials():
@@ -51,8 +51,6 @@ def login(session):
 
 
 def get_new_notifications(session):
-	global last_notification_parsed
-
 	comments = []
 	found_last = False
 	next_key = ''
@@ -62,17 +60,15 @@ def get_new_notifications(session):
 		notifs = COMMENT_MENTION_REGEX.findall(r.text)
 		for notif in notifs:
 			m = COMMENT_ID_REGEX.match(notif)
-			if m.group(2) == last_notification_parsed:
+			if m.group(2) in notifications_processed:
 				found_last = True
 				break
 			comments.append((m.group(1), m.group(2)))
+			notifications_processed.append(m.group(2))
 		next_key_all = NOTIFICATION_NEXT_KEY_REGEX.findall(r.text)
 		if len(next_key_all) == 0 or len(next_key_all[0]) == 0:
 			break
 		next_key = next_key_all[0]	# Assume first one to be the correct one
-
-	if len(comments) > 0:
-		last_notification_parsed = comments[0][1]
 	return comments
 
 def get_subscription_from_comment(session, post_id, comment_id):
@@ -170,6 +166,7 @@ def update_mapping(sql_conn, user_id, user_name):
 
 def update_subscriptions(session, sql_conn):
 	notifs = get_new_notifications(session)
+	print 'Found', len(notifs), 'new notifications'
 	for notif in notifs:
 		subscription = get_subscription_from_comment(session, notif[0], notif[1])
 		if subscription is None:
