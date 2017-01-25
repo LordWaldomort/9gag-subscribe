@@ -88,7 +88,7 @@ def comment_on_post(post_id, op_user_id):
 	chunk_size = 10
 
 	for i in xrange(0, len(tag_ids), chunk_size):
-		comment_text = ' '.join(map(lambda x: '@' + x, tag_ids[i:i+chunk_size])) + ' see this.'
+		comment_text = ' '.join(map(lambda x: '@' + x[0], tag_ids[i:i+chunk_size])) + ' see this.'
 		ngag.post_comment(session, post_id, comment_text)
 
 def process_post_queue():
@@ -99,7 +99,7 @@ def process_post_queue():
 			del posts_to_comment[post_id]
 		else:
 			posts_to_comment[post_id]+=1
-			if posts_to_comment[post_id] == 5:
+			if posts_to_comment[post_id] == 10:
 				del posts_to_comment[post_id]
 
 def init_9gag_py():
