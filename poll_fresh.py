@@ -45,7 +45,6 @@ def get_new_posts():
 	global posts_to_comment
 	hit_last = False
 	while hit_last == False:
-		print 'Sending poll request'
 		response = requests.get(BASE_URL+load_url, headers={"X-Requested-With":"XMLHttpRequest", "Accept":"application/json, text/javascipt, */*; q=0.01"})
 		try:
 			ids = response.json()["ids"]
@@ -152,7 +151,6 @@ def post_commenting_thread():
 		print "Processing comment queue"
 		process_post_queue()
 		dump_comment_map_to_file()		
-		print posts_to_comment
 		for i in range(300):
 			if keep_running == False:
 				break
