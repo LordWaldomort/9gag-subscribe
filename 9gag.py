@@ -206,11 +206,15 @@ def main():
 
 	read_dump_files()
 
-	while True:
-		print 'Updating subscriptions'
-		update_subscriptions(session, sql_conn)
-		time.sleep(60)
-
+	try:
+		while True:
+			print 'Updating subscriptions'
+			update_subscriptions(session, sql_conn)
+			time.sleep(60)
+	except KeyboardInterrupt:
+		print 'Got KeyboardInterrupt'
+		sql_conn.close()
+		print 'EXIT'
 
 if __name__ == '__main__':
 	main()
