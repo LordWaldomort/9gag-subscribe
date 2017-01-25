@@ -157,7 +157,7 @@ def post_commenting_thread():
 			if keep_running == False:
 				break
 			time.sleep(1)
-
+	db_conn.close()
 
 def main():
 	global keep_running
