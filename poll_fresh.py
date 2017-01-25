@@ -3,7 +3,7 @@ import json
 import time
 import sqlite3
 import threading
-
+import os
 ngag = __import__("9gag")
 
 posts_processed=[]
@@ -16,8 +16,26 @@ posts_to_comment = {}
 db_conn = 0
 max_tags_in_comment = 10
 
+dump_file_post_array = "poll_data_post_array.json"
+dump_file_comment_map = "poll_data_comment_map.json"
 
 session=0
+
+def read_dump_files():
+	global posts_processed
+	global posts_to_comment
+	global first_start
+	if os.path.exists(dump_file_post_array):
+		f=open(dump_file_post_array)
+		posts_processed = json.loads(f.read())
+		f.close()
+		first_start = False
+		print "First start set to false"
+	if os.path.exists(dump_file_comment_map):
+		f=open(dump_file_comment_map)
+		posts_to_comment = json.loads(f.read())
+		f.close()
+
 
 def get_new_posts():
 	global posts_processed
@@ -27,6 +45,7 @@ def get_new_posts():
 	global posts_to_comment
 	hit_last = False
 	while hit_last == False:
+		print 'Sending poll request'
 		response = requests.get(BASE_URL+load_url, headers={"X-Requested-With":"XMLHttpRequest", "Accept":"application/json, text/javascipt, */*; q=0.01"})
 		try:
 			ids = response.json()["ids"]
@@ -70,7 +89,7 @@ def comment_on_post(post_id, op_user_id):
 	chunk_size = 10
 
 	for i in xrange(0, len(tag_ids), chunk_size):
-		comment_text = ' '.join(map(lambda x: '@' + x, tag_ids[i:i+chunk_size])) + ' .'
+		comment_text = ' '.join(map(lambda x: '@' + x, tag_ids[i:i+chunk_size])) + ' see this.'
 		ngag.post_comment(session, post_id, comment_text)
 
 def process_post_queue():
@@ -95,11 +114,32 @@ def init_9gag_py():
 
 keep_running = True
 
+
+
+def dump_post_array_to_file():
+	global posts_processed
+	if len(posts_processed) > 150:
+		posts_processed = posts_processed[-100:]
+	f=open(dump_file_post_array,"w+")
+	f.write(json.dumps(posts_processed))
+	f.close()
+def dump_comment_map_to_file():
+	global posts_to_comment
+	f=open(dump_file_comment_map, "w+")
+	f.write(json.dumps(posts_to_comment))
+	f.close()
+
+	
+	
+
 def post_polling_thread():
 	global keep_running
+	global posts_processed
 	while keep_running:
 		print "Polling new posts"
 		get_new_posts()
+		dump_post_array_to_file()
+		dump_comment_map_to_file()		
 		for i in range(60):
 			if keep_running == False:
 				break
@@ -111,6 +151,7 @@ def post_commenting_thread():
 	while keep_running:
 		print "Processing comment queue"
 		process_post_queue()
+		dump_comment_map_to_file()		
 		print posts_to_comment
 		for i in range(300):
 			if keep_running == False:
@@ -121,6 +162,7 @@ def post_commenting_thread():
 def main():
 	global keep_running
 	init_9gag_py()
+	read_dump_files()
 	t1=threading.Thread(target=post_polling_thread)
 	t1.start()
 	time.sleep(10)
@@ -136,5 +178,6 @@ def main():
 		t2.join()
 		print "Threads closed"
 		print "EXIT"
+
 if __name__ == "__main__":
 	main()
