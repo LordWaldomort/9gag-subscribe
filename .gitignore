@@ -15,3 +15,7 @@ config.cfg
 
 #dumps
 *.json
+
+
+#log files
+*.out

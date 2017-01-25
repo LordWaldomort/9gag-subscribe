@@ -88,7 +88,8 @@ def comment_on_post(post_id, op_user_id):
 	chunk_size = 10
 
 	for i in xrange(0, len(tag_ids), chunk_size):
-		comment_text = ' '.join(map(lambda x: '@' + x[0], tag_ids[i:i+chunk_size])) + ' see this.'
+		comment_text = ' '.join(map(lambda x: '@' + x[0], tag_ids[i:i+chunk_size])) + ' this might interest you - ' + post_id + '.'
+		print "Commenting", post_id, comment_text
 		ngag.post_comment(session, post_id, comment_text)
 
 def process_post_queue():
