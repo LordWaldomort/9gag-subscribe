@@ -147,6 +147,9 @@ def post_comment(session, post_id, text):
 	return True
 
 def add_subscription(sql_conn, op_id, subs_id):
+	if op_id == subs_id:
+		print 'Smartass user', op_id, ' subscribing to themself'
+		return
 	existing = sql_conn.execute("""
 			SELECT COUNT(*)
 			FROM subscriptions
