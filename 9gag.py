@@ -1,4 +1,6 @@
 import ConfigParser
+import json
+import os
 import requests
 import sqlite3
 import sys
@@ -7,6 +9,7 @@ import re
 
 CONFIG_FILE = 'config.cfg'
 SQLITE_DB_FILE = 'subscription_data.db'
+NOTIFICATIONS_DUMP_FILE = 'notifications_processed.json'
 TAGGER_BOT_DISPLAY_NAME = '@post_tagger'
 COMMAND_SUBSCRIBE = 'subscribe'
 
@@ -26,6 +29,23 @@ NOTIFICATION_NEXT_KEY_REGEX = re.compile('<li class=".*badge-notification-nextKe
 login_data = {'username': '***', 'password': '***'}
 notifications_processed = []
 cacheable = {}
+
+def read_dump_files():
+	global notifications_processed
+	if os.path.exists(NOTIFICATIONS_DUMP_FILE):
+		f = open(NOTIFICATIONS_DUMP_FILE)
+		notifications_processed = json.load(f)
+		f.close()
+		print 'Read notifications_processed from file'
+
+def write_dump_files():
+	print 'Dumping notifications_processed'
+	global notifications_processed
+	if len(notifications_processed) > 150:
+		notifications_processed = notifications_processed[-100:]
+	f = open(NOTIFICATIONS_DUMP_FILE, 'w+')
+	json.dump(notifications_processed, f)
+	f.close()
 
 def get_login_credentials():
 	cfg = ConfigParser.ConfigParser()
@@ -174,6 +194,7 @@ def update_subscriptions(session, sql_conn):
 		op_id, subs_name, subs_id = subscription
 		add_subscription(sql_conn, op_id, subs_id)
 		update_mapping(sql_conn, subs_id, subs_name)
+	write_dump_files()
 
 def main():
 	sql_conn = sqlite3.connect(SQLITE_DB_FILE)
@@ -182,6 +203,8 @@ def main():
 	print 'logging in'
 	login(session)
 	print 'logged in'
+
+	read_dump_files()
 
 	while True:
 		print 'Updating subscriptions'

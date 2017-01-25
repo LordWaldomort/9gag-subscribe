@@ -12,3 +12,6 @@ config.cfg
 
 #python bit codes
 *.pyc
+
+#dumps
+*.json
