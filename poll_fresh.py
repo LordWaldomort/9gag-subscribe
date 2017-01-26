@@ -111,8 +111,25 @@ def init_9gag_py():
 	ngag.login(session)
 	print 'logged in'
 
-
 keep_running = True
+def relogin_thread():
+	global keep_running
+	global session
+	first_login = False
+	while keep_running:
+		if first_login:
+			session = requests.session()
+			print 'loggin in'
+			ngag.login(session)
+			print 'logged in'
+		else:
+			first_login = True	
+		for i in range(18000):
+			if keep_running == False:
+				break
+			time.sleep(1)
+			
+
 
 
 
@@ -167,6 +184,8 @@ def main():
 	time.sleep(10)
 	t2=threading.Thread(target=post_commenting_thread)
 	t2.start()
+	t3=threading.Thread(target=relogin_thread)
+	t3.start()
 	try:
 		while 1:
 			time.sleep(1)
@@ -175,6 +194,7 @@ def main():
 		keep_running = False
 		t1.join()
 		t2.join()
+		t3.join()
 		print "Threads closed"
 		print "EXIT"
 
