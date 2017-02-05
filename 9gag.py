@@ -26,6 +26,9 @@ COMMENT_MENTION_REGEX = re.compile('<li [^>]* data-actionType="COMMENT_MENTION" 
 COMMENT_ID_REGEX = re.compile('.*data-objectId="http://9gag.com/gag/([^#]*)#([^"]*)".*')
 NOTIFICATION_NEXT_KEY_REGEX = re.compile('<li class=".*badge-notification-nextKey[^"]*">([^<]*)</li>')
 
+OPCLIENTID_REGEX =  re.compile("'opClientId': '([^']*)'")
+OPSIGNATURE_REGEX =  re.compile("'opSignature': '([^']*)'")
+
 login_data = {'username': '***', 'password': '***'}
 notifications_processed = []
 cacheable = {}
@@ -126,7 +129,7 @@ def get_subscription_from_comment(session, post_id, comment_id):
 
 	return (op_id, subscriber_name, subscriber_id)
 
-def post_comment(session, post_id, text):
+def post_comment(session, post_id, text, withClient=False):
 	data = {
 		'appId': APP_ID,
 		'url': 'http://9gag.com/gag/' + post_id,
@@ -134,17 +137,45 @@ def post_comment(session, post_id, text):
 		'isAnonymous': 'off',
 		'auth': cacheable['user']['commentSso']
 	}
+	if withClient == True:
+		response = requests.get("http://9gag.com/gag/"+post_id)
+		client_id = OPCLIENTID_REGEX.findall(response.text)
+		client_signature = OPSIGNATURE_REGEX.findall(response.text)
+		if len(client_id) == 1 and len(client_signature) == 1:
+			data["opClientId"] = client_id[0]
+			data["opSignature"] = client_signature[0]
 	r = session.post(COMMENT_POST_URL, data=data)
 	try:
 		result = r.json()
 	except ValueError as e:
 		print r, e
 		return False
-
 	if result['status'] != 'OK':
 		print result
 		return False
-	return True
+	print "Quota =",result["payload"]["quota"]["count"]
+	print "opUserId =", result["payload"]["opUserId"]
+	return result["payload"]["comment"]["commentId"]
+def delete_comment(session, post_id, comment_id):
+	data = {
+		'appId' : APP_ID,
+		'url' : 'http://9gag.com/gag/' + post_id,
+		'auth' : cacheable['user']['commentSso'],
+		'_method' : 'DELETE',
+		'id' : comment_id
+	}
+	r = session.post(COMMENT_POST_URL, data=data)
+        try:
+                result = r.json()
+        except ValueError as e:
+                print r, e
+                return False
+        if result['status'] != 'OK':
+                print result
+                return False
+	print "Deleted comment for", post_id
+        print "Quota =",result["payload"]["quota"]["count"]
+        return True
 
 def add_subscription(sql_conn, op_id, subs_id):
 	if op_id == subs_id:

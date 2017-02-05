@@ -93,7 +93,12 @@ def comment_on_post(post_id, op_user_id):
 		ngag.post_comment(session, post_id, comment_text)
 
 def process_post_queue():
+	global session
 	for post_id in posts_to_comment.keys():
+		if posts_to_comment[post_id] > 4:
+			comment_id = ngag.post_comment(session, post_id, "Test comment for "+post_id, True)
+			if comment_id != False:
+				ngag.delete_comment(session, post_id, comment_id)
 		op_user_id=get_op_id(post_id)
 		if op_user_id != "":
 			comment_on_post(post_id, op_user_id)
