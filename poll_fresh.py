@@ -45,7 +45,10 @@ def get_new_posts():
 	global posts_to_comment
 	hit_last = False
 	while hit_last == False:
-		response = requests.get(BASE_URL+load_url, headers={"X-Requested-With":"XMLHttpRequest", "Accept":"application/json, text/javascipt, */*; q=0.01"})
+		try:
+			response = requests.get(BASE_URL+load_url, headers={"X-Requested-With":"XMLHttpRequest", "Accept":"application/json, text/javascipt, */*; q=0.01"})
+		except:
+			continue
 		try:
 			ids = response.json()["ids"]
 		except ValueError as e:
@@ -69,7 +72,10 @@ def get_new_posts():
 
 
 def get_op_id(post_id):
-	response = requests.get(COMMENT_URL+post_id)
+	try:
+		response = requests.get(COMMENT_URL+post_id)
+	except:
+		return ""
 	try:
 		response_json = response.json()
 	except ValueError as e:

@@ -57,14 +57,23 @@ def get_login_credentials():
 	login_data['password'] = cfg.get('credentials', 'password')
 
 def login(session):
-	session.post(BASE_URL + LOGIN, data=login_data)
+	try:
+		session.post(BASE_URL + LOGIN, data=login_data)
+	except:
+		print "Couldn't login"
+		exit(-1)
+		return False
 	data = {"json":'[{"action":"vote","params":{}},{"action":"user","params":{}},{"action":"user-preference","params":{}},{"action":"user-quota","params":{}}]'}
 	headers = {
 		"X-Requested-With": "XMLHttpRequest",
 		"Accept": "application/json, text/javascipt, */*; q=0.01",
 	}
-	r = session.post(BASE_URL + CACHEABLE, data=data, headers=headers)
-
+	try:
+		r = session.post(BASE_URL + CACHEABLE, data=data, headers=headers)
+	except:
+		print 'Couldn\' get cacheable: ', r, e
+		exit()
+		
 	global cacheable
 	try:
 		cacheable = r.json()
@@ -79,7 +88,10 @@ def get_new_notifications(session):
 	next_key = ''
 
 	while not found_last:
-		r = session.get(BASE_URL + NOTIFICATION + next_key)
+		try:
+			r = session.get(BASE_URL + NOTIFICATION + next_key)
+		except:
+			continue
 		notifs = COMMENT_MENTION_REGEX.findall(r.text)
 		for notif in notifs:
 			m = COMMENT_ID_REGEX.match(notif)
@@ -102,7 +114,11 @@ def get_subscription_from_comment(session, post_id, comment_id):
 		'level': 1,
 		'commentId': comment_id,
 	}
-	r = session.post(COMMENT_LIST_URL, data=data)
+	try:
+		r = session.post(COMMENT_LIST_URL, data=data)
+	except:
+		print e
+		return None
 	try:
 		result = r.json()
 	except ValueError as e:
@@ -138,13 +154,19 @@ def post_comment(session, post_id, text, withClient=False):
 		'auth': cacheable['user']['commentSso']
 	}
 	if withClient == True:
-		response = requests.get("http://9gag.com/gag/"+post_id)
+		try:
+			response = requests.get("http://9gag.com/gag/"+post_id)
+		except:
+			return False
 		client_id = OPCLIENTID_REGEX.findall(response.text)
 		client_signature = OPSIGNATURE_REGEX.findall(response.text)
 		if len(client_id) == 1 and len(client_signature) == 1:
 			data["opClientId"] = client_id[0]
 			data["opSignature"] = client_signature[0]
-	r = session.post(COMMENT_POST_URL, data=data)
+	try:
+		r = session.post(COMMENT_POST_URL, data=data)
+	except:
+		return False
 	try:
 		result = r.json()
 	except ValueError as e:
@@ -164,8 +186,11 @@ def delete_comment(session, post_id, comment_id):
 		'_method' : 'DELETE',
 		'id' : comment_id
 	}
-	r = session.post(COMMENT_POST_URL, data=data)
-        try:
+	try:
+		r = session.post(COMMENT_POST_URL, data=data)
+        except:
+		return False
+	try:
                 result = r.json()
         except ValueError as e:
                 print r, e
