@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS subscriptions (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	op_id TEXT NOT NULL,
-	subscriber_id TEXT NOT NULL
+	subscriber_id TEXT NOT NULL,
+	post_id TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS user_id_to_name (

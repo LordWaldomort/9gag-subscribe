@@ -226,7 +226,7 @@ def delete_comment(session, post_id, comment_id):
         print "Quota =",result["payload"]["quota"]["count"]
         return True
 
-def add_subscription(sql_conn, op_id, subs_id):
+def add_subscription(sql_conn, op_id, subs_id, post_id):
 	if op_id == subs_id:
 		print 'Smartass user', op_id, ' subscribing to themself'
 		return
@@ -241,9 +241,9 @@ def add_subscription(sql_conn, op_id, subs_id):
 		return
 
 	sql_conn.execute("""
-			INSERT INTO subscriptions (op_id, subscriber_id)
-			VALUES ('{}', '{}')
-		""".format(op_id, subs_id))
+			INSERT INTO subscriptions (op_id, subscriber_id, post_id)
+			VALUES ('{}', '{}', '{}')
+		""".format(op_id, subs_id, post_id))
 
 	sql_conn.commit()
 
@@ -275,7 +275,7 @@ def update_subscriptions(session, sql_conn):
 		if subscription is None:
 			continue
 		op_id, subs_name, subs_id = subscription
-		add_subscription(sql_conn, op_id, subs_id)
+		add_subscription(sql_conn, op_id, subs_id, notif[0])
 		update_mapping(sql_conn, subs_id, subs_name)
 	write_dump_files()
 
