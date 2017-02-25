@@ -14,7 +14,7 @@ first_start = True
 
 posts_to_comment = {}
 db_conn = 0
-max_tags_in_comment = 10
+max_tags_in_comment = 3
 
 dump_file_post_array = "poll_data_post_array.json"
 dump_file_comment_map = "poll_data_comment_map.json"
@@ -90,8 +90,9 @@ def get_op_id(post_id):
 def comment_on_post(post_id, op_user_id):
 	global db_conn
 	global session
+	global max_tags_in_comment
 	tag_ids = db_conn.execute("select name from subscriptions, user_id_to_name where op_id='"+op_user_id+"' and subscriptions.subscriber_id = user_id_to_name.user_id;").fetchall()
-	chunk_size = 10
+	chunk_size = max_tags_in_comment
 
 	for i in xrange(0, len(tag_ids), chunk_size):
 		comment_text = ' '.join(map(lambda x: '@' + x[0], tag_ids[i:i+chunk_size])) + ' this might interest you - ' + post_id + '.'
@@ -100,6 +101,7 @@ def comment_on_post(post_id, op_user_id):
 
 def process_post_queue():
 	global session
+	rejected_list = ""
 	for post_id in posts_to_comment.keys():
 		if posts_to_comment[post_id] > 4:
 			comment_id = ngag.post_comment(session, post_id, "Test comment for "+post_id, True)
@@ -112,7 +114,12 @@ def process_post_queue():
 		else:
 			posts_to_comment[post_id]+=1
 			if posts_to_comment[post_id] == 10:
+				rejected_list += (post_id + "\n")
 				del posts_to_comment[post_id]
+	
+	file_handle = open("dropped_posts.txt", "a")
+	file_handle.write(rejected_list)
+	file_handle.close()
 
 def init_9gag_py():
 	global session
