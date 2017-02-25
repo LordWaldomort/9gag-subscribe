@@ -156,7 +156,7 @@ def get_subscription_from_comment(session, post_id, comment_id):
 		return None
 
 	comment_text = chosen_comment['text']
-	if comment_text != (TAGGER_BOT_DISPLAY_NAME + ' ' + COMMAND_SUBSCRIBE):
+	if comment_text.startswith(TAGGER_BOT_DISPLAY_NAME + ' ' + COMMAND_SUBSCRIBE):
 		return None
 
 	subscriber_name = chosen_comment['user']['displayName']
