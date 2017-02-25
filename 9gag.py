@@ -73,7 +73,7 @@ def login(session):
 	except:
 		print 'Couldn\' get cacheable: ', r, e
 		exit()
-		
+
 	global cacheable
 	try:
 		cacheable = r.json()
@@ -128,22 +128,50 @@ def get_subscription_from_comment(session, post_id, comment_id):
 	if result['status'] != 'OK':
 		return None
 
-	op_id = result['payload']['opUserId']
-	if len(op_id) == 0:
+	opclient_data = get_opclient_data(post_id)
+	if not opclient_data:
+		return None
+
+	op_id = opclient_data[0]
+	if len(op_id) == 0 or op_id == '0':
 		# TODO handle no OP case
 		return None
+
+
 	comments = result['payload']['comments']
+
 	if len(comments) == 0:
 		return None
 
-	comment_text = comments[0]['text']
+	comments_to_process = [comments[0]] + comments[0]["children"]
+
+	chosen_comment = None
+	for comment in comments_to_process:
+		if comment['commentId'] == comment_id:
+			chosen_comment = comment
+			break
+
+	if not chosen_comment:
+		return None
+
+	comment_text = chosen_comment['text']
 	if comment_text != (TAGGER_BOT_DISPLAY_NAME + ' ' + COMMAND_SUBSCRIBE):
 		return None
 
-	subscriber_name = comments[0]['user']['displayName']
-	subscriber_id = comments[0]['user']['userId']
+	subscriber_name = chosen_comment['user']['displayName']
+	subscriber_id = chosen_comment['user']['userId']
 
 	return (op_id, subscriber_name, subscriber_id)
+
+def get_opclient_data(post_id):
+	try:
+		response = requests.get("http://9gag.com/gag/"+post_id)
+	except:
+		return None
+	client_id = OPCLIENTID_REGEX.findall(response.text)
+	client_signature = OPSIGNATURE_REGEX.findall(response.text)
+	if len(client_id) == 1 and len(client_signature) == 1:
+		return client_id[0], client_signature[0]
 
 def post_comment(session, post_id, text, withClient=False):
 	data = {
@@ -154,15 +182,11 @@ def post_comment(session, post_id, text, withClient=False):
 		'auth': cacheable['user']['commentSso']
 	}
 	if withClient == True:
-		try:
-			response = requests.get("http://9gag.com/gag/"+post_id)
-		except:
+		opclient_data = get_opclient_data(post_id)
+		if not opclient_data:
 			return False
-		client_id = OPCLIENTID_REGEX.findall(response.text)
-		client_signature = OPSIGNATURE_REGEX.findall(response.text)
-		if len(client_id) == 1 and len(client_signature) == 1:
-			data["opClientId"] = client_id[0]
-			data["opSignature"] = client_signature[0]
+		data["opClientId"] = opclient_data[0]
+		data["opSignature"] = opclient_data[1]
 	try:
 		r = session.post(COMMENT_POST_URL, data=data)
 	except:

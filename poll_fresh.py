@@ -69,23 +69,11 @@ def get_new_posts():
 		load_url = response.json()["loadMoreUrl"]
 	return return_ids
 
-
-
 def get_op_id(post_id):
-	try:
-		response = requests.get(COMMENT_URL+post_id)
-	except:
+	data = ngag.get_opclient_data(post_id)
+	if not data:
 		return ""
-	try:
-		response_json = response.json()
-	except ValueError as e:
-		print e
-		print "Skipping post", post_id
-		print "Post not handled"
-		return ""
-	return response_json["payload"]["opUserId"]
-
-
+	return data[0]
 
 def comment_on_post(post_id, op_user_id):
 	global db_conn
@@ -103,10 +91,6 @@ def process_post_queue():
 	global session
 	rejected_list = ""
 	for post_id in posts_to_comment.keys():
-		if posts_to_comment[post_id] > 4:
-			comment_id = ngag.post_comment(session, post_id, "Test comment for "+post_id, True)
-			if comment_id != False:
-				ngag.delete_comment(session, post_id, comment_id)
 		op_user_id=get_op_id(post_id)
 		if op_user_id != "":
 			comment_on_post(post_id, op_user_id)
@@ -116,7 +100,7 @@ def process_post_queue():
 			if posts_to_comment[post_id] == 10:
 				rejected_list += (post_id + "\n")
 				del posts_to_comment[post_id]
-	
+
 	file_handle = open("dropped_posts.txt", "a")
 	file_handle.write(rejected_list)
 	file_handle.close()
@@ -141,12 +125,12 @@ def relogin_thread():
 			ngag.login(session)
 			print 'logged in'
 		else:
-			first_login = True	
+			first_login = True
 		for i in range(18000):
 			if keep_running == False:
 				break
 			time.sleep(1)
-			
+
 
 
 
@@ -164,8 +148,8 @@ def dump_comment_map_to_file():
 	f.write(json.dumps(posts_to_comment))
 	f.close()
 
-	
-	
+
+
 
 def post_polling_thread():
 	global keep_running
@@ -174,7 +158,7 @@ def post_polling_thread():
 		print "Polling new posts"
 		get_new_posts()
 		dump_post_array_to_file()
-		dump_comment_map_to_file()		
+		dump_comment_map_to_file()
 		for i in range(60):
 			if keep_running == False:
 				break
@@ -186,7 +170,7 @@ def post_commenting_thread():
 	while keep_running:
 		print "Processing comment queue"
 		process_post_queue()
-		dump_comment_map_to_file()		
+		dump_comment_map_to_file()
 		for i in range(300):
 			if keep_running == False:
 				break
