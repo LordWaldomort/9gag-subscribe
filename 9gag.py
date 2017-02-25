@@ -23,6 +23,7 @@ COMMENT_LIST_URL = 'http://comment.9gag.com/v1/comment-list.json'
 COMMENT_POST_URL = 'http://comment.9gag.com/v1/comment.json'
 
 COMMENT_MENTION_REGEX = re.compile('<li [^>]* data-actionType="COMMENT_MENTION" [^>]*>')
+COMMENT_REPLY_REGEX = re.compile('<li [^>]* data-actionType="COMMENT_REPLY" [^>]*>')
 COMMENT_ID_REGEX = re.compile('.*data-objectId="http://9gag.com/gag/([^#]*)#([^"]*)".*')
 NOTIFICATION_NEXT_KEY_REGEX = re.compile('<li class=".*badge-notification-nextKey[^"]*">([^<]*)</li>')
 
@@ -92,7 +93,7 @@ def get_new_notifications(session):
 			r = session.get(BASE_URL + NOTIFICATION + next_key)
 		except:
 			continue
-		notifs = COMMENT_MENTION_REGEX.findall(r.text)
+		notifs = COMMENT_MENTION_REGEX.findall(r.text) + COMMENT_REPLY_REGEX.findall(r.text)
 		for notif in notifs:
 			m = COMMENT_ID_REGEX.match(notif)
 			if m.group(2) in notifications_processed:
