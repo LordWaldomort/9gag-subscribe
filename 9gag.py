@@ -12,6 +12,7 @@ SQLITE_DB_FILE = 'subscription_data.db'
 NOTIFICATIONS_DUMP_FILE = 'notifications_processed.json'
 TAGGER_BOT_DISPLAY_NAME = '@post_tagger'
 COMMAND_SUBSCRIBE = 'subscribe'
+COMMAND_UNSUBSCRIBE = 'unsubscribe'
 
 APP_ID = 'a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b'
 
@@ -156,13 +157,17 @@ def get_subscription_from_comment(session, post_id, comment_id):
 		return None
 
 	comment_text = chosen_comment['text']
-	if not comment_text.startswith(TAGGER_BOT_DISPLAY_NAME + ' ' + COMMAND_SUBSCRIBE):
+	command_value = ""
+	if comment_text.startswith(TAGGER_BOT_DISPLAY_NAME + ' ' + COMMAND_SUBSCRIBE):
+		command_value = COMMAND_SUBSCRIBE
+	elif comment_text.startswith(TAGGER_BOT_DISPLAY_NAME + " " + COMMAND_UNSUBSCRIBE):
+		command_value = COMMAND_UNSUBSCRIBE
+	else:
 		return None
-
 	subscriber_name = chosen_comment['user']['displayName']
 	subscriber_id = chosen_comment['user']['userId']
 
-	return (op_id, subscriber_name, subscriber_id)
+	return (command_value, op_id, subscriber_name, subscriber_id)
 
 def get_opclient_data(post_id):
 	try:
@@ -248,6 +253,12 @@ def add_subscription(sql_conn, op_id, subs_id, post_id):
 
 	sql_conn.commit()
 
+def remove_subscription(sql_conn, op_id, subs_id):
+	sql_conn.execute("""
+			DELETE FROM subscriptions where op_id = {} and subscriber_id = {}
+		""". format(op_id, subs_id))
+	sql_conn.commit()
+
 def update_mapping(sql_conn, user_id, user_name):
 	existing = sql_conn.execute("""
 			SELECT COUNT(*)
@@ -275,8 +286,11 @@ def update_subscriptions(session, sql_conn):
 		subscription = get_subscription_from_comment(session, notif[0], notif[1])
 		if subscription is None:
 			continue
-		op_id, subs_name, subs_id = subscription
-		add_subscription(sql_conn, op_id, subs_id, notif[0])
+		command_value, op_id, subs_name, subs_id = subscription
+		if command_value == COMMAND_SUBSCRIBE:
+			add_subscription(sql_conn, op_id, subs_id, notif[0])
+		elif command_value == COMMAND_UNSUBSCRIBE:
+			remove_subscription(sql_conn, op_id, subs_id)
 		update_mapping(sql_conn, subs_id, subs_name)
 	write_dump_files()
 

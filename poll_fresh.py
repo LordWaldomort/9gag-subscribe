@@ -4,6 +4,7 @@ import time
 import sqlite3
 import threading
 import os
+import datetime
 ngag = __import__("9gag")
 
 posts_processed=[]
@@ -122,8 +123,15 @@ def relogin_thread():
 		if first_login:
 			session = requests.session()
 			print 'loggin in'
-			ngag.login(session)
+			try:
+				ngag.login(session)
+			except:
+				print "login has failed, retrying"
+				continue
 			print 'logged in'
+			f = open("relogin_log.txt", "a")
+			f.write("relogin at " + str(datetime.datetime.now()))
+			f.close()
 		else:
 			first_login = True
 		for i in range(18000):
