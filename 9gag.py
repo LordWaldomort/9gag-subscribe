@@ -31,9 +31,7 @@ NOTIFICATION_NEXT_KEY_REGEX = re.compile('<li class=".*badge-notification-nextKe
 OPCLIENTID_REGEX =  re.compile("'opClientId': '([^']*)'")
 OPSIGNATURE_REGEX =  re.compile("'opSignature': '([^']*)'")
 
-login_data = {'username': '***', 'password': '***'}
 notifications_processed = []
-cacheable = {}
 
 def read_dump_files():
 	global notifications_processed
@@ -55,20 +53,22 @@ def write_dump_files():
 def get_login_credentials():
 	cfg = ConfigParser.ConfigParser()
 	cfg.read(CONFIG_FILE)
+	login_data = {}
 	login_data['username'] = cfg.get('credentials', 'username')
 	login_data['password'] = cfg.get('credentials', 'password')
+	return login_data
 
-def login(session):
+def login(session, login_data):
 	try:
-		session.post(BASE_URL + LOGIN, data=login_data)
+		r = session.post(BASE_URL + LOGIN, data=login_data)
 	except:
-		print "Couldn't login"
+		print "Couldn't login" 
 		exit(-1)
 		return False
 	data = {"json":'[{"action":"vote","params":{}},{"action":"user","params":{}},{"action":"user-preference","params":{}},{"action":"user-quota","params":{}}]'}
 	headers = {
 		"X-Requested-With": "XMLHttpRequest",
-		"Accept": "application/json, text/javascipt, */*; q=0.01",
+		"Accept": "application/json, text/javascript, */*; q=0.01",
 	}
 	try:
 		r = session.post(BASE_URL + CACHEABLE, data=data, headers=headers)
@@ -76,9 +76,9 @@ def login(session):
 		print 'Couldn\' get cacheable: ', r, e
 		exit()
 
-	global cacheable
 	try:
 		cacheable = r.json()
+		return cacheable
 	except ValueError as e:
 		print 'Couldn\' get cacheable: ', r, e
 		exit()
@@ -179,7 +179,7 @@ def get_opclient_data(post_id):
 	if len(client_id) == 1 and len(client_signature) == 1:
 		return client_id[0], client_signature[0]
 
-def post_comment(session, post_id, text, withClient=False):
+def post_comment(session, post_id, text, cacheable, withClient=False):
 	data = {
 		'appId': APP_ID,
 		'url': 'http://9gag.com/gag/' + post_id,
@@ -196,6 +196,7 @@ def post_comment(session, post_id, text, withClient=False):
 	try:
 		r = session.post(COMMENT_POST_URL, data=data)
 	except:
+		print 'Commenting post req failed'
 		return False
 	try:
 		result = r.json()
@@ -208,7 +209,7 @@ def post_comment(session, post_id, text, withClient=False):
 	print "Quota =",result["payload"]["quota"]["count"]
 	print "opUserId =", result["payload"]["opUserId"]
 	return result["payload"]["comment"]["commentId"]
-def delete_comment(session, post_id, comment_id):
+def delete_comment(session, post_id, comment_id, cacheable):
 	data = {
 		'appId' : APP_ID,
 		'url' : 'http://9gag.com/gag/' + post_id,
@@ -296,10 +297,10 @@ def update_subscriptions(session, sql_conn):
 
 def main():
 	sql_conn = sqlite3.connect(SQLITE_DB_FILE)
-	get_login_credentials()
+	login_data = get_login_credentials()
 	session = requests.session()
 	print 'logging in'
-	login(session)
+	login(session, login_data)
 	print 'logged in'
 
 	read_dump_files()

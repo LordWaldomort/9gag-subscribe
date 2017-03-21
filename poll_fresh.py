@@ -20,7 +20,10 @@ max_tags_in_comment = 3
 dump_file_post_array = "poll_data_post_array.json"
 dump_file_comment_map = "poll_data_comment_map.json"
 
-session=0
+USERNAME = 'pt_commenter_'
+number_of_accounts = 10
+sessions = []
+current_session_idx = 0
 
 def read_dump_files():
 	global posts_processed
@@ -78,18 +81,20 @@ def get_op_id(post_id):
 
 def comment_on_post(post_id, op_user_id):
 	global db_conn
-	global session
 	global max_tags_in_comment
+	global current_session_idx
+
 	tag_ids = db_conn.execute("select name from subscriptions, user_id_to_name where op_id='"+op_user_id+"' and subscriptions.subscriber_id = user_id_to_name.user_id;").fetchall()
 	chunk_size = max_tags_in_comment
 
 	for i in xrange(0, len(tag_ids), chunk_size):
 		comment_text = ' '.join(map(lambda x: '@' + x[0], tag_ids[i:i+chunk_size])) + ' this might interest you - ' + post_id + '.'
 		print "Commenting", post_id, comment_text
-		ngag.post_comment(session, post_id, comment_text)
+		ses = sessions[current_session_idx]
+		ngag.post_comment(ses[0], post_id, comment_text, ses[1])
+		current_session_idx = (current_session_idx + 1) % number_of_accounts
 
 def process_post_queue():
-	global session
 	rejected_list = ""
 	for post_id in posts_to_comment.keys():
 		op_user_id=get_op_id(post_id)
@@ -107,30 +112,30 @@ def process_post_queue():
 	file_handle.close()
 
 def init_9gag_py():
-	global session
-	ngag.get_login_credentials()
-	session = requests.session()
-	print 'logging in'
-	ngag.login(session)
-	print 'logged in'
+	password = ngag.get_login_credentials()['password']
+	sessions = []
+	for i in xrange(number_of_accounts):
+		session = requests.session()
+		cacheable = ngag.login(session, {'username': USERNAME + str(i), 'password': password})
+		sessions.append((session, cacheable))
+	return sessions
 
 keep_running = True
 def relogin_thread():
 	global keep_running
-	global session
+	global sessions
 	first_login = False
 	while keep_running:
 		if first_login:
-			session = requests.session()
 			print 'loggin in'
 			try:
-				ngag.login(session)
+				sessions = init_9gag_py()
 			except:
 				print "login has failed, retrying"
 				continue
 			print 'logged in'
 			f = open("relogin_log.txt", "a")
-			f.write("relogin at " + str(datetime.datetime.now()))
+			f.write("relogin at " + str(datetime.datetime.now()) + "\n")
 			f.close()
 		else:
 			first_login = True
@@ -138,10 +143,6 @@ def relogin_thread():
 			if keep_running == False:
 				break
 			time.sleep(1)
-
-
-
-
 
 def dump_post_array_to_file():
 	global posts_processed
@@ -155,8 +156,6 @@ def dump_comment_map_to_file():
 	f=open(dump_file_comment_map, "w+")
 	f.write(json.dumps(posts_to_comment))
 	f.close()
-
-
 
 
 def post_polling_thread():
@@ -187,7 +186,8 @@ def post_commenting_thread():
 
 def main():
 	global keep_running
-	init_9gag_py()
+	global sessions
+	sessions = init_9gag_py()
 	read_dump_files()
 	t1=threading.Thread(target=post_polling_thread)
 	t1.start()
