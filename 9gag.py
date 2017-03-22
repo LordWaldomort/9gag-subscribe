@@ -112,8 +112,8 @@ def get_subscription_from_comment(session, post_id, comment_id):
 	data = {
 		'appId': APP_ID,
 		'url': 'http://9gag.com/gag/' + post_id,
-		'count': 0,
-		'level': 1,
+		'count': 10,
+		'level': 2,
 		'commentId': comment_id,
 	}
 	try:
@@ -256,7 +256,7 @@ def add_subscription(sql_conn, op_id, subs_id, post_id):
 
 def remove_subscription(sql_conn, op_id, subs_id):
 	sql_conn.execute("""
-			DELETE FROM subscriptions where op_id = {} and subscriber_id = {}
+			DELETE FROM subscriptions where op_id = '{}' and subscriber_id = '{}'
 		""". format(op_id, subs_id))
 	sql_conn.commit()
 
