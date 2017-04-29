@@ -45,7 +45,7 @@ def write_dump_files():
 	print 'Dumping notifications_processed'
 	global notifications_processed
 	if len(notifications_processed) > 150:
-		notifications_processed = notifications_processed[-100:]
+		notifications_processed = notifications_processed[:100]
 	f = open(NOTIFICATIONS_DUMP_FILE, 'w+')
 	json.dump(notifications_processed, f)
 	f.close()
@@ -62,7 +62,7 @@ def login(session, login_data):
 	try:
 		r = session.post(BASE_URL + LOGIN, data=login_data)
 	except:
-		print "Couldn't login" 
+		print "Couldn't login"
 		exit(-1)
 		return False
 	data = {"json":'[{"action":"vote","params":{}},{"action":"user","params":{}},{"action":"user-preference","params":{}},{"action":"user-quota","params":{}}]'}
@@ -83,11 +83,12 @@ def login(session, login_data):
 		print 'Couldn\' get cacheable: ', r, e
 		exit()
 
-
 def get_new_notifications(session):
 	comments = []
 	found_last = False
 	next_key = ''
+	
+	new_notifs_processed = []
 
 	while not found_last:
 		try:
@@ -101,11 +102,15 @@ def get_new_notifications(session):
 				found_last = True
 				break
 			comments.append((m.group(1), m.group(2)))
-			notifications_processed.append(m.group(2))
+			new_notifs_processed.append(m.group(2))
 		next_key_all = NOTIFICATION_NEXT_KEY_REGEX.findall(r.text)
 		if len(next_key_all) == 0 or len(next_key_all[0]) == 0:
 			break
 		next_key = next_key_all[0]	# Assume first one to be the correct one
+	
+	global notifications_processed
+	notifications_processed = new_notifs_processed + notifications_processed
+	
 	return comments
 
 def get_subscription_from_comment(session, post_id, comment_id):
@@ -118,7 +123,7 @@ def get_subscription_from_comment(session, post_id, comment_id):
 	}
 	try:
 		r = session.post(COMMENT_LIST_URL, data=data)
-	except:
+	except e:
 		print e
 		return None
 	try:
@@ -179,13 +184,14 @@ def get_opclient_data(post_id):
 	if len(client_id) == 1 and len(client_signature) == 1:
 		return client_id[0], client_signature[0]
 
-def post_comment(session, post_id, text, cacheable, withClient=False):
+def post_comment(session, post_id, text, cacheable, parent="", withClient=False):
 	data = {
 		'appId': APP_ID,
 		'url': 'http://9gag.com/gag/' + post_id,
 		'text': text,
 		'isAnonymous': 'off',
-		'auth': cacheable['user']['commentSso']
+		'auth': cacheable['user']['commentSso'],
+		'parent':parent
 	}
 	if withClient == True:
 		opclient_data = get_opclient_data(post_id)

@@ -21,7 +21,7 @@ dump_file_post_array = "poll_data_post_array.json"
 dump_file_comment_map = "poll_data_comment_map.json"
 
 USERNAME = 'pt_commenter_'
-number_of_accounts = 10
+number_of_accounts = 30
 sessions = []
 current_session_idx = 0
 
@@ -82,16 +82,19 @@ def get_op_id(post_id):
 def comment_on_post(post_id, op_user_id):
 	global db_conn
 	global max_tags_in_comment
+	global posts_to_comment
 	global current_session_idx
 
 	tag_ids = db_conn.execute("select name from subscriptions, user_id_to_name where op_id='"+op_user_id+"' and subscriptions.subscriber_id = user_id_to_name.user_id;").fetchall()
 	chunk_size = max_tags_in_comment
-
+	first_comment = ""
 	for i in xrange(0, len(tag_ids), chunk_size):
 		comment_text = ' '.join(map(lambda x: '@' + x[0], tag_ids[i:i+chunk_size])) + ' this might interest you - ' + post_id + '.'
 		print "Commenting", post_id, comment_text
 		ses = sessions[current_session_idx]
-		ngag.post_comment(ses[0], post_id, comment_text, ses[1])
+		com_id = ngag.post_comment(ses[0], post_id, comment_text, ses[1], first_comment)
+		if first_comment == "" and com_id != None:
+			first_comment = com_id
 		current_session_idx = (current_session_idx + 1) % number_of_accounts
 
 def process_post_queue():
@@ -99,8 +102,8 @@ def process_post_queue():
 	for post_id in posts_to_comment.keys():
 		op_user_id=get_op_id(post_id)
 		if op_user_id != "":
-			comment_on_post(post_id, op_user_id)
 			del posts_to_comment[post_id]
+			comment_on_post(post_id, op_user_id)
 		else:
 			posts_to_comment[post_id]+=1
 			if posts_to_comment[post_id] == 10:
